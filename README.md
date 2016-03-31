@@ -1,4 +1,4 @@
-# gitlab-kube
+# deploy gitlab to kubernetes
 #COMMOND
 kubectl create -f local-volumes.yaml
 
