@@ -1,0 +1,81 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitlabmain
+  labels:
+    app: gitlab
+spec:
+  ports:
+    - port: 22
+      name: ssh
+    - port: 80
+      name: http
+  selector:
+    app: gitlab
+    tier: gitlabmain
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: gitlabmain-pv-claim
+  labels:
+    app: gitlab
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: gitlabmain
+  labels:
+    app: gitlab
+spec:
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: gitlab
+        tier: gitlabmain
+    spec:
+      containers:
+      - image: sameersbn/gitlab:8.6.1
+        name: gitlabmain
+        env:
+        - name: DB_ADAPTER
+          value: 'postgresql'
+        - name: DB_HOST
+          value: '10.0.0.33'
+        - name: DB_NAME
+          value: 'gitlabhq_production'
+        - name: DB_USER
+          value: 'gitlab'
+        - name: DB_PASS
+          value: 'password'
+        - name: REDIS_HOST
+          value: '10.0.0.34'
+        - name: REDIS_PORT
+          value: '6379'
+        - name: GITLAB_PORT
+          value: '80'
+        - name: GITLAB_SSH_PORT
+          value: '22'
+        - name: GITLAB_SECRETS_DB_KEY_BASE
+          value: 'long-and-random-alpha-numeric-string'
+        ports:
+        - containerPort: 80
+          name: http
+        - containerPort: 22
+          name: ssh
+        volumeMounts:
+        - name: gitlabmain-persistent-storage
+          mountPath: /home/git/data
+      volumes:
+      - name: gitlabmain-persistent-storage
+        persistentVolumeClaim:
+          claimName: gitlabmain-pv-claim
